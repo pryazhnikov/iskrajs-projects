@@ -160,25 +160,32 @@ SecurityChecker.prototype.enableAlarm = function () {
 };
 
 SecurityChecker.prototype.updateStatus = function () {
+  let timeStart = getTime();
   let lightValue = this._LightSensor.read('lx').toFixed(0);
   let context = this;
   this._SonicSensor.ping(
     function (err, value) {
+      let timeFinish = getTime();
       let sonarValue = null;
       if (err) {
-        console.log("Cannot get ultrasonic value:", err.msg);
+        console.log("Sensor: cannot get ultrasonic value:", err.msg);
       } else {
         // Расстояние меряем в миллиметрах, дробная часть не нужна
         sonarValue = Math.round(value);
       }
 
-      context._onValuesReady(lightValue, sonarValue);
+      let waitTime = (timeFinish - timeStart);
+      context._onValuesReady(waitTime, lightValue, sonarValue);
     },
     "mm"
   );
 };
 
-SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
+SecurityChecker.prototype._onValuesReady = function (
+  waitTime,
+  lightValue,
+   sonarValue
+  ) {
   let hasAnomaly = false;
 
   // Пока мы умеем ловить только аномалии в свете
@@ -186,7 +193,7 @@ SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
   if (this._lightSensorValues.isFull()) {
     if (this._isAnomalyValues(this._lightSensorValues)) {
       hasAnomaly = true;
-      console.log("Light sensor anomaly found");
+      console.log("Status: light sensor anomaly found!");
     }
   }
 
@@ -194,8 +201,10 @@ SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
     this.enableAlarm();
   }
 
+  let waitTimeMs = Math.round(1e3 * waitTime);
   console.log(
     '#', this._lightSensorValues.getValuesCount(),
+    (waitTimeMs + "ms"),
     "Sonar:", sonarValue,
     "light(lx):", this._lightSensorValues.toString()
   );
