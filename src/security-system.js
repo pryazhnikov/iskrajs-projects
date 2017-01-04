@@ -116,100 +116,110 @@ IntValuesWindow.prototype.toString = function() {
 
 //-- Module end
 
-//
-function createSecurityChecker(LightSensor, SonicSensor, Light) {
-  var isAlarmEnabled = false;
-  var _disableAlarm = function () {
-      if (!isAlarmEnabled) return;
 
-      Light.turnOff();
-      isAlarmEnabled = false;
-  };
+//-- Module begin
+function SecurityChecker(LightSensor, SonicSensor, AlarmLight) {
+  this._LightSensor = LightSensor;
+  this._SonicSensor = SonicSensor;
+  this._AlarmLight  = AlarmLight;
 
-  var _enableAlarm = function () {
-    if (isAlarmEnabled) return;
-
-    Light.blink(0.6, 0.4);
-    isAlarmEnabled = true;
-
-    setTimeout(_disableAlarm, ANOMALY_ALARM_TIME_MS);
-  };
-
-  var _lightSensorValues = new IntValuesWindow(ANOMALY_SENSORS_BUFFER_SIZE);
-
-  var _isAnomalyValue = function (value, previousValuesList) {
-    let sumValues  = 0;
-    let itemsCount = 0;
-    for (let i in previousValuesList) {
-      sumValues += previousValuesList[i];
-      itemsCount++;
-    }
-    if (0 === itemsCount) return false;
-
-    let avgValue = sumValues / itemsCount;
-    let deltaPercent = (100 * Math.abs(avgValue - value) / avgValue);
-    console.log(
-      "Value:", value,
-      "Average:", avgValue.toFixed(2),
-      "Delta:", deltaPercent.toFixed(2)
-    );
-
-    return deltaPercent >= ANOMALY_SENSIVITY_PERCENT;
-  };
-
-  var _onValuesReady = function (lightValue, sonarValue) {
-    let hasAnomaly = false;
-
-    // Пока мы умеем ловить только аномалии в свете
-    if (_lightSensorValues.isFull()) {
-      if (_isAnomalyValue(lightValue, _lightSensorValues.getLastValues())) {
-        hasAnomaly = true;
-        console.log("Light sensor anomaly found");
-      }
-    }
-
-    if (hasAnomaly) {
-      _enableAlarm();
-    }
-
-    _lightSensorValues.addValue(lightValue);
-
-    console.log(
-      '#', _lightSensorValues.getValuesCount(),
-      "Sonar:", sonarValue,
-      "light(lx):", _lightSensorValues.toString()
-    );
-  };
-
-  return {
-    'resetState': function () {
-      // Сначала видимые пользователю изменения...
-      _disableAlarm();
-
-      // ... а затем невидимые
-      _lightSensorValues.reset();
-    },
-    'updateStatus' : function () {
-      if (!isSchemeEnabled) return;
-
-      var lightValue = LightSensor.read('lx').toFixed(0);
-      var sonarValue = null;
-      SonicSensor.ping(
-        function (err, value) {
-          if (err) {
-            console.log("Cannot get ultrasonic value:", err.msg);
-          } else {
-            // Расстояние меряем в миллиметрах, дробная часть не нужна
-            sonarValue = Math.round(value);
-          }
-
-          _onValuesReady(lightValue, sonarValue);
-        },
-        "mm"
-      );
-    }
-  };
+  this._isAlarmEnabled = false;
+  this._lightSensorValues = new IntValuesWindow(
+    ANOMALY_SENSORS_BUFFER_SIZE
+  );
 }
+
+SecurityChecker.prototype.resetState = function () {
+  // Сначала видимые пользователю изменения...
+  this.disableAlarm();
+
+  // ... а затем невидимые
+  this._lightSensorValues.reset();
+};
+
+SecurityChecker.prototype.disableAlarm = function () {
+  if (!this._isAlarmEnabled) return;
+
+  this._AlarmLight.turnOff();
+  this._isAlarmEnabled = false;
+};
+
+SecurityChecker.prototype.enableAlarm = function () {
+  if (this._isAlarmEnabled) return;
+
+  this._AlarmLight.blink(0.6, 0.4);
+  this._isAlarmEnabled = true;
+
+  // Через какое-то время система сама выключается
+  setTimeout(this.disableAlarm, ANOMALY_ALARM_TIME_MS);
+};
+
+
+SecurityChecker.prototype.updateStatus = function () {
+  let lightValue = this._LightSensor.read('lx').toFixed(0);
+  let context = this;
+  this._SonicSensor.ping(
+    function (err, value) {
+      let sonarValue = null;
+      if (err) {
+        console.log("Cannot get ultrasonic value:", err.msg);
+      } else {
+        // Расстояние меряем в миллиметрах, дробная часть не нужна
+        sonarValue = Math.round(value);
+      }
+
+      context._onValuesReady(lightValue, sonarValue);
+    },
+    "mm"
+  );
+};
+
+SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
+  let hasAnomaly = false;
+
+  // Пока мы умеем ловить только аномалии в свете
+  if (this._lightSensorValues.isFull()) {
+    if (this._isAnomalyValue(lightValue, this._lightSensorValues)) {
+      hasAnomaly = true;
+      console.log("Light sensor anomaly found");
+    }
+  }
+
+  if (hasAnomaly) {
+    this.enableAlarm();
+  }
+
+  this._lightSensorValues.addValue(lightValue);
+
+  console.log(
+    '#', this._lightSensorValues.getValuesCount(),
+    "Sonar:", sonarValue,
+    "light(lx):", this._lightSensorValues.toString()
+  );
+};
+
+// @TODO move into standalone function & call it as a callback
+SecurityChecker.prototype._isAnomalyValue = function (value, valuesWindow) {
+  let sumValues  = 0;
+  let itemsCount = 0;
+  let itemsList = valuesWindow.getLastValues();
+  for (let i in itemsList) {
+    sumValues += itemsList[i];
+    itemsCount++;
+  }
+  if (0 === itemsCount) return false;
+
+  let avgValue = sumValues / itemsCount;
+  let deltaPercent = (100 * Math.abs(avgValue - value) / avgValue);
+  console.log(
+    "Value:", value,
+    "Average:", avgValue.toFixed(2),
+    "Delta:", deltaPercent.toFixed(2)
+  );
+
+  return deltaPercent >= ANOMALY_SENSIVITY_PERCENT;
+};
+//-- Module end
 
 var Light = require('@amperka/led')
   .connect(PIN_OUTPUT_LIGHT);
@@ -221,7 +231,7 @@ var SonicSensor = require('@amperka/ultrasonic')
     echoPin : PIN_INPUT_ULTRASONIC_ECHO
   });
 
-var SecurityChecker = createSecurityChecker(
+var checker = new SecurityChecker(
   LightSensor,
   SonicSensor,
   Light
@@ -229,8 +239,15 @@ var SecurityChecker = createSecurityChecker(
 
 function resetSchemeState() {
   console.log("Schema reset to default state");
-  SecurityChecker.resetState();
+  checker.resetState();
 }
 resetSchemeState();
 
-setInterval(SecurityChecker.updateStatus, REACTION_TIME_MS);
+setInterval(
+  function () {
+    if (!isSchemeEnabled) return;
+
+    checker.updateStatus();
+  },
+  REACTION_TIME_MS
+);
