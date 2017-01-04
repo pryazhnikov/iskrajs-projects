@@ -6,7 +6,7 @@
 const REACTION_TIME_MS = 250;
 const STATUS_SHOW_PERIOD_MS = 2000;
 
-const ANOMALY_ALARM_TIME_MS = 5000;
+const ANOMALY_ALARM_TIME_MS = 3000;
 const ANOMALY_SENSORS_BUFFER_SIZE = 10;
 const ANOMALY_SENSIVITY_PERCENT = 20;
 
@@ -118,7 +118,7 @@ IntValuesWindow.prototype.toString = function() {
 
 
 //-- Module begin
-function SecurityChecker(LightSensor, SonicSensor, AlarmLight) {
+function SecurityChecker(LightSensor, SonicSensor, AlarmLight, cb) {
   this._LightSensor = LightSensor;
   this._SonicSensor = SonicSensor;
   this._AlarmLight  = AlarmLight;
@@ -127,6 +127,7 @@ function SecurityChecker(LightSensor, SonicSensor, AlarmLight) {
   this._lightSensorValues = new IntValuesWindow(
     ANOMALY_SENSORS_BUFFER_SIZE
   );
+  this._anomalyDetectionCallback = cb;
 }
 
 SecurityChecker.prototype.resetState = function () {
@@ -138,8 +139,6 @@ SecurityChecker.prototype.resetState = function () {
 };
 
 SecurityChecker.prototype.disableAlarm = function () {
-  if (!this._isAlarmEnabled) return;
-
   this._AlarmLight.turnOff();
   this._isAlarmEnabled = false;
 };
@@ -151,7 +150,13 @@ SecurityChecker.prototype.enableAlarm = function () {
   this._isAlarmEnabled = true;
 
   // Через какое-то время система сама выключается
-  setTimeout(this.disableAlarm, ANOMALY_ALARM_TIME_MS);
+  var ctx = this;
+  setTimeout(
+    function () {
+      ctx.disableAlarm();
+    },
+    ANOMALY_ALARM_TIME_MS
+  );
 };
 
 
@@ -178,8 +183,9 @@ SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
   let hasAnomaly = false;
 
   // Пока мы умеем ловить только аномалии в свете
+  this._lightSensorValues.addValue(lightValue);
   if (this._lightSensorValues.isFull()) {
-    if (this._isAnomalyValue(lightValue, this._lightSensorValues)) {
+    if (this._isAnomalyValues(this._lightSensorValues)) {
       hasAnomaly = true;
       console.log("Light sensor anomaly found");
     }
@@ -189,13 +195,19 @@ SecurityChecker.prototype._onValuesReady = function (lightValue, sonarValue) {
     this.enableAlarm();
   }
 
-  this._lightSensorValues.addValue(lightValue);
-
   console.log(
     '#', this._lightSensorValues.getValuesCount(),
     "Sonar:", sonarValue,
     "light(lx):", this._lightSensorValues.toString()
   );
+};
+
+SecurityChecker.prototype._isAnomalyValues = function (valuesWindow) {
+  if (this._anomalyDetectionCallback) {
+    return this._anomalyDetectionCallback(valuesWindow.getLastValues());
+  }
+  
+  return false;
 };
 
 // @TODO move into standalone function & call it as a callback
@@ -221,6 +233,43 @@ SecurityChecker.prototype._isAnomalyValue = function (value, valuesWindow) {
 };
 //-- Module end
 
+
+//-- Module begin
+function NaiveAnomalyDetector(sensivityPercent) {
+  this._sensivityPercent = sensivityPercent;
+}
+
+NaiveAnomalyDetector.prototype.check = function (valuesList) {
+  let size = valuesList.length;
+  let lastValue = valuesList[size - 1];
+  let previousValues = valuesList.slice(0, size - 1);
+
+  let avgValue = this.getAverage(previousValues);
+  let deltaPercent = (100 * Math.abs(avgValue - lastValue) / avgValue);
+
+  let result = (deltaPercent >= this._sensivityPercent);
+  console.log(
+    "Anomaly?", result,
+    "Value:", lastValue,
+    "Average:", avgValue.toFixed(2),
+    "Delta:", deltaPercent.toFixed(2)
+  );
+
+  return result;
+};
+
+NaiveAnomalyDetector.prototype.getAverage = function (valuesList) {
+  let sumValues  = 0;
+  let itemsCount = 0;
+  for (let i in valuesList) {
+    sumValues += valuesList[i];
+    itemsCount++;
+  }
+
+  return sumValues / itemsCount;
+};
+//-- Module end
+
 var Light = require('@amperka/led')
   .connect(PIN_OUTPUT_LIGHT);
 var LightSensor = require('@amperka/light-sensor')
@@ -231,10 +280,15 @@ var SonicSensor = require('@amperka/ultrasonic')
     echoPin : PIN_INPUT_ULTRASONIC_ECHO
   });
 
+var detector = new NaiveAnomalyDetector(ANOMALY_SENSIVITY_PERCENT);
+
 var checker = new SecurityChecker(
   LightSensor,
   SonicSensor,
-  Light
+  Light,
+  function (valuesList) {
+    return detector.check(valuesList);
+  }
 );
 
 function resetSchemeState() {
