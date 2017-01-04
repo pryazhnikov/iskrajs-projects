@@ -3,7 +3,7 @@
  */
 
 // Настройки таймаутов
-const REACTION_TIME_MS = 250;
+const REACTION_TIME_MS = 500;
 const STATUS_SHOW_PERIOD_MS = 2000;
 
 const ANOMALY_ALARM_TIME_MS = 3000;
@@ -108,12 +108,12 @@ IntValuesWindow.prototype.getValuesCount = function() {
 IntValuesWindow.prototype.getLastValues = function() {
   return this._values;
 };
+
 IntValuesWindow.prototype.toString = function() {
   let stopIndex = Math.min(this._valuesCount, this._bufferSize);
   let digestValues = this._values.slice(0, stopIndex);
   return digestValues.join(", ");
 };
-
 //-- Module end
 
 
@@ -158,7 +158,6 @@ SecurityChecker.prototype.enableAlarm = function () {
     ANOMALY_ALARM_TIME_MS
   );
 };
-
 
 SecurityChecker.prototype.updateStatus = function () {
   let lightValue = this._LightSensor.read('lx').toFixed(0);
@@ -206,30 +205,8 @@ SecurityChecker.prototype._isAnomalyValues = function (valuesWindow) {
   if (this._anomalyDetectionCallback) {
     return this._anomalyDetectionCallback(valuesWindow.getLastValues());
   }
-  
+
   return false;
-};
-
-// @TODO move into standalone function & call it as a callback
-SecurityChecker.prototype._isAnomalyValue = function (value, valuesWindow) {
-  let sumValues  = 0;
-  let itemsCount = 0;
-  let itemsList = valuesWindow.getLastValues();
-  for (let i in itemsList) {
-    sumValues += itemsList[i];
-    itemsCount++;
-  }
-  if (0 === itemsCount) return false;
-
-  let avgValue = sumValues / itemsCount;
-  let deltaPercent = (100 * Math.abs(avgValue - value) / avgValue);
-  console.log(
-    "Value:", value,
-    "Average:", avgValue.toFixed(2),
-    "Delta:", deltaPercent.toFixed(2)
-  );
-
-  return deltaPercent >= ANOMALY_SENSIVITY_PERCENT;
 };
 //-- Module end
 
@@ -249,7 +226,7 @@ NaiveAnomalyDetector.prototype.check = function (valuesList) {
 
   let result = (deltaPercent >= this._sensivityPercent);
   console.log(
-    "Anomaly?", result,
+    result ? "Fail!" : "OK!",
     "Value:", lastValue,
     "Average:", avgValue.toFixed(2),
     "Delta:", deltaPercent.toFixed(2)
