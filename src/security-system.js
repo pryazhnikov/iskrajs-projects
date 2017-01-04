@@ -22,7 +22,7 @@ console.log("Scenario run start");
 /* Возможность включить-выключить схему */
 
 // Кнопка для глобального включения / выключения
-var button = require('@amperka/button')
+var ToggleButton = require('@amperka/button')
   .connect(PIN_STATUS_BUTTON);
 
 var isSchemeEnabled = true;
@@ -35,7 +35,7 @@ function toggleSchemaStatus() {
     resetStatusLight();
   }
 }
-button.on('release', toggleSchemaStatus);
+ToggleButton.on('release', toggleSchemaStatus);
 
 // Показ глобального статуса аналогичного ТВ:
 // Лампочка моргает когда система выключена
@@ -65,6 +65,57 @@ function resetStatusLight() {
   toggleStatusLight(false);
 }
 
+
+//-- Module begin
+function IntValuesWindow(windowSize) {
+  this._valuesCount = 0;
+  this._bufferSize = windowSize;
+  this._values = new Uint32Array(this._bufferSize);
+}
+
+IntValuesWindow.prototype.addValue = function(value) {
+  if (this._valuesCount < this._bufferSize) {
+    // Окно еще не заполнено, просто добавляем новое значение
+    this._values[this._valuesCount] = value;
+  } else {
+    // Окно уже полностью заполнено, чтобы добавить новое значение мы должны  убрать самое старое
+    for (let i = 1; i < this._bufferSize; i++) {
+      this._values[i - 1] = this._values[i];
+    }
+
+    this._values[this._bufferSize - 1] = value;
+  }
+
+  this._valuesCount++;
+  return true;
+};
+
+IntValuesWindow.prototype.reset = function() {
+  for (let i = 0; i < this._bufferSize; i++) {
+    this._values[i] = 0;
+  }
+  this._valuesCount = 0;
+};
+
+IntValuesWindow.prototype.isFull = function() {
+  return (this._valuesCount >= this._bufferSize);
+};
+
+IntValuesWindow.prototype.getValuesCount = function() {
+  return this._valuesCount;
+};
+
+IntValuesWindow.prototype.getLastValues = function() {
+  return this._values;
+};
+IntValuesWindow.prototype.toString = function() {
+  let stopIndex = Math.min(this._valuesCount, this._bufferSize);
+  let digestValues = this._values.slice(0, stopIndex);
+  return digestValues.join(", ");
+};
+
+//-- Module end
+
 //
 function createSecurityChecker(LightSensor, SonicSensor, Light) {
   var isAlarmEnabled = false;
@@ -84,32 +135,7 @@ function createSecurityChecker(LightSensor, SonicSensor, Light) {
     setTimeout(_disableAlarm, ANOMALY_ALARM_TIME_MS);
   };
 
-  var _numValues = 0;
-  var _isCheckAvailable = function () {
-    // Принимать решение о тревоге можно только после того,
-    // как будет полностью заполнен буфер со значениями
-    return _numValues > ANOMALY_SENSORS_BUFFER_SIZE;
-  };
-
-  var _lightSensorValues = new Uint32Array(ANOMALY_SENSORS_BUFFER_SIZE);
-  function addSensorValueToList(newValue, sensorValuesList) {
-    if (_numValues < ANOMALY_SENSORS_BUFFER_SIZE) {
-      sensorValuesList[_numValues] = newValue;
-    } else {
-      // Буффер заполнился, используем фиксированный размер окна
-      for (var i = 1; i < ANOMALY_SENSORS_BUFFER_SIZE; i++) {
-        sensorValuesList[i - 1] = sensorValuesList[i];
-      }
-
-      sensorValuesList[ANOMALY_SENSORS_BUFFER_SIZE - 1] = newValue;
-    }
-  }
-
-  function resetSensorValuesList(sensorValuesList) {
-    for (let i in sensorValuesList) {
-      sensorValuesList[i] = 0;
-    }
-  }
+  var _lightSensorValues = new IntValuesWindow(ANOMALY_SENSORS_BUFFER_SIZE);
 
   var _isAnomalyValue = function (value, previousValuesList) {
     let sumValues  = 0;
@@ -132,26 +158,26 @@ function createSecurityChecker(LightSensor, SonicSensor, Light) {
   };
 
   var _onValuesReady = function (lightValue, sonarValue) {
-    if (_isCheckAvailable()) {
-      // Пока мы умеем ловить только аномалии в свете
-      let hasAnomaly = false;
-      if (_isAnomalyValue(lightValue, _lightSensorValues)) {
-        hasAnomaly = true;
-        console.log("Light sensor anpmaly found");
-      }
+    let hasAnomaly = false;
 
-      if (hasAnomaly) {
-        _enableAlarm();
+    // Пока мы умеем ловить только аномалии в свете
+    if (_lightSensorValues.isFull()) {
+      if (_isAnomalyValue(lightValue, _lightSensorValues.getLastValues())) {
+        hasAnomaly = true;
+        console.log("Light sensor anomaly found");
       }
     }
 
-    addSensorValueToList(lightValue, _lightSensorValues);
+    if (hasAnomaly) {
+      _enableAlarm();
+    }
 
-    _numValues++;
+    _lightSensorValues.addValue(lightValue);
+
     console.log(
-      "Values:", _numValues,
+      '#', _lightSensorValues.getValuesCount(),
       "Sonar:", sonarValue,
-      "light(lx):", _lightSensorValues.join(", ")
+      "light(lx):", _lightSensorValues.toString()
     );
   };
 
@@ -161,8 +187,7 @@ function createSecurityChecker(LightSensor, SonicSensor, Light) {
       _disableAlarm();
 
       // ... а затем невидимые
-      resetSensorValuesList(_lightSensorValues);
-      _numValues = 0;
+      _lightSensorValues.reset();
     },
     'updateStatus' : function () {
       if (!isSchemeEnabled) return;
