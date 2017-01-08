@@ -10,55 +10,9 @@ const SERVO_ANGLE_VALUE_INIT = (SERVO_ANGLE_VALUE_MIN + SERVO_ANGLE_VALUE_MAX) /
 const SERVO_ANGLE_VALUE_DELTA = (SERVO_ANGLE_VALUE_MIN + SERVO_ANGLE_VALUE_MAX) / 10;
 const SERVO_MOVE_TIME_MS = 750;
 
-// Класс для работы
-function ServoScanner(
-  Servo,
-  initialAngle,
-  minAngle,
-  maxAngle,
-  angleDelta
-) {
-  this._Servo = Servo;
-  this._minAngle = minAngle;
-  this._maxAngle = maxAngle;
-  this._angleDelta = angleDelta;
-  this.moveTo(initialAngle);
-}
-
-ServoScanner.prototype.getAngle = function () {
-  return this._angle;
-};
-
-ServoScanner.prototype.getAngleDelta = function () {
-  return this._angleDelta;
-};
-
-ServoScanner.prototype.moveTo = function (newAngle) {
-  if ((newAngle < this._minAngle) || (this._maxAngle < newAngle)) {
-    return false;
-  }
-
-  this._angle = newAngle;
-  return this._Servo.write(this._angle);
-};
-
-ServoScanner.prototype.moveToNext = function () {
-  let newAngle = this._angle + this._angleDelta;
-  if (newAngle > this._maxAngle) {
-    // Новый угол выходит за границы диапазона
-    this._angleDelta = -1 * Math.abs(this._angleDelta);
-    newAngle = this._angle + this._angleDelta;
-  } else if (newAngle < this._minAngle) {
-    this._angleDelta = Math.abs(this._angleDelta);
-    newAngle = this._angle + this._angleDelta;
-  }
-
-  return this.moveTo(newAngle);
-};
-
-var myServo = require('@amperka/servo').connect(PIN_SERVO);
-var ServoWrapper = new ServoScanner(
-  myServo,
+var $myServo = require('@amperka/servo').connect(PIN_SERVO);
+var ServoScanner = require('servo-scanner').connect(
+  $myServo,
   SERVO_ANGLE_VALUE_INIT,
   SERVO_ANGLE_VALUE_MIN,
   SERVO_ANGLE_VALUE_MAX,
@@ -89,11 +43,11 @@ setInterval(
   function () {
     if (!isSchemeEnabled) return;
 
-    let angleBefore = ServoWrapper.getAngle();
-    ServoWrapper.moveToNext();
+    let angleBefore = ServoScanner.getAngle();
+    ServoScanner.moveToNext();
 
-    let angleAfter = ServoWrapper.getAngle();
-    let angleDelta = ServoWrapper.getAngleDelta();
+    let angleAfter = ServoScanner.getAngle();
+    let angleDelta = ServoScanner.getAngleDelta();
     console.log(
       "Time:", getTime().toFixed(3),
       "Old angle:", angleBefore,
