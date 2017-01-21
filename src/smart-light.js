@@ -5,10 +5,11 @@ const PIN_INPUT_ULTRASONIC_ECHO = P13;
 const PIN_INPUT_LIGHT_SENSOR = A0;
 const PIN_OUTPUT_LIGHT = P0;
 
-const MOTION_CHECK_TIME_MS = 500;
-const LIGHT_ENABLE_TIME_MS = 5000; // = 5 секунд
+const MOTION_CHECK_TIME_MS = 400;
+const LIGHT_ENABLE_TIME_MS = 15000;
 
 const SONAR_ANOMALY_PERCENT = 10;
+const LIGHT_DISABLE_TRESHOLD_LX = 30;
 
 var $sonicSensor = require('@amperka/ultrasonic')
   .connect({
@@ -31,7 +32,7 @@ var isSchemeEnabled = true;
 function toggleSchemaStatus() {
   isSchemeEnabled = !isSchemeEnabled;
   console.log("Button click triggers new schema status: ", isSchemeEnabled);
-  if (!isSchemaEnabled) {
+  if (!isSchemeEnabled) {
     lightDisable();
   }
 }
@@ -60,28 +61,35 @@ function hasAnomaliesInWindow(window) {
   return false;
 }
 
-let isLightEnabled = false;
+let lightStatus = {
+  isEnabled : false,
+  enableTime : 0
+};
 function lightEnable() {
-  if (isLightEnabled) return;
+  if (lightStatus.isEnabled) return;
 
-  console.log(
-    "Light enabling:", getTime().toFixed(0)
-  );
+  lightStatus.isEnabled = true;
+  lightStatus.enableTime = getTime().toFixed(0);
 
   $light.turnOn().brightness(1.0);
-  isLightEnabled = true;
   setTimeout(lightDisable, LIGHT_ENABLE_TIME_MS);
+  console.log(
+    "Light enabling:", lightStatus.enableTime
+  );
 }
 
 function lightDisable() {
-  if (isLightEnabled) {
-    console.log(
-      "Light disabling:", getTime().toFixed(0)
-    );
+  if (!lightStatus.isEnabled) return;
 
-    $light.turnOff();
-    isLightEnabled = false;
-  }
+  let disableTime = getTime().toFixed(0);
+  let workTime = disableTime - lightStatus.enableTime;
+  console.log(
+    "Light disabling:", disableTime,
+    "Work time:", workTime
+  );
+
+  $light.turnOff();
+  lightStatus.isEnabled = false;
 }
 
 var sonarValuesWindow = require('values-window')
@@ -109,13 +117,16 @@ setInterval(
 
         let waitTimeMs = Math.round(1e3 * (timeFinish - timeStart));
 
+        let isEnoughLight = (lightValue >= LIGHT_DISABLE_TRESHOLD_LX);
         let hasMovement = false;
         if (sonarValue) {
           sonarValuesWindow.addValue(sonarValue);
           hasMovement = hasAnomaliesInWindow(sonarValuesWindow);
         }
 
-        if (hasMovement) {
+        if (isEnoughLight) {
+          lightDisable();
+        } else if (hasMovement) {
           lightEnable();
         }
 
