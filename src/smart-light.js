@@ -62,19 +62,39 @@ function hasAnomaliesInWindow(window) {
 }
 
 let lightStatus = {
+  generation : 0,
   isEnabled : false,
   enableTime : 0
 };
 function lightEnable() {
   if (lightStatus.isEnabled) return;
 
+
+  lightStatus.generation++;
   lightStatus.isEnabled = true;
   lightStatus.enableTime = getTime().toFixed(0);
 
   $light.turnOn().brightness(1.0);
-  setTimeout(lightDisable, LIGHT_ENABLE_TIME_MS);
   console.log(
     "Light enabling:", lightStatus.enableTime
+  );
+
+  let disableGeneration = lightStatus.generation;
+  setTimeout(
+    function () {
+      // Эта функция может вызваться после того, как свет выключится
+      // по другой причине и включится снова
+      if (lightStatus.generation == disableGeneration) {
+        lightDisable();
+      } else {
+        console.log(
+          "Light disable ignore!",
+          "Disable generation:", disableGeneration,
+          "Current generation:", lightStatus.generation
+        );
+      }
+    },
+    LIGHT_ENABLE_TIME_MS
   );
 }
 
