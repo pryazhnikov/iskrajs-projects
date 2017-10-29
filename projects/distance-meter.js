@@ -2,7 +2,7 @@
  * Этот проект для измерения расстояния
  */
 
- // Настройки подключения датчиков
+// Настройки подключения датчиков
 const PIN_STATUS_BUTTON = P0;
 const PIN_INPUT_ULTRASONIC_TRIGGER = P12;
 const PIN_INPUT_ULTRASONIC_ECHO = P13;
@@ -10,11 +10,13 @@ const PIN_INPUT_ULTRASONIC_ECHO = P13;
 // Остальные настройки
 const DISTANCE_MEASURE_INTERVAL_TIME_MS = 500;
 
-// Контекст работы со схемой
+// "Высокоуровневый" объект для работы со схемой
 let RangeScheme = {
   '_isEnabled': false,
 
   '_updateCallback': null,
+
+  '_enabledChangeCallback': null,
 
   '_updateIntervalId': null,
 
@@ -22,19 +24,34 @@ let RangeScheme = {
     return this._isEnabled;
   },
 
+  'setEnabledChangeCallback': function (callback) {
+    this._enabledChangeCallback = callback;
+  },
+
   'toggleEnabled': function () {
     this._isEnabled = !this._isEnabled;
     this._processCallback();
   },
 
-  'init': function (callback) {
-    this._updateCallback = callback;
+  'run': function (updateCallback) {
+    this._updateCallback = updateCallback;
     this._processCallback();
   },
 
   '_processCallback': function () {
+    if (this._enabledChangeCallback) {
+      this._enabledChangeCallback(this._isEnabled);
+    }
+
     if (this._isEnabled && this._updateCallback) {
-      this._updateIntervalId = setInterval(this._updateCallback,  DISTANCE_MEASURE_INTERVAL_TIME_MS);
+      let measurePeriodTime = DISTANCE_MEASURE_INTERVAL_TIME_MS;
+      let context = this;
+      this._updateIntervalId = setInterval(
+        function () {
+          context._updateCallback(measurePeriodTime);
+        },
+        measurePeriodTime
+      );
     } else if (!this._isEnabled && this._updateIntervalId) {
       clearInterval(this._updateIntervalId);
       this._updateIntervalId = null;
@@ -43,15 +60,16 @@ let RangeScheme = {
 };
 
 // Кнопка для глобального включения / выключения
-var isSchemeEnabled = true;
 var $toggleButton = require('@amperka/button')
   .connect(PIN_STATUS_BUTTON);
 
-function toggleSchemaStatus() {
-  RangeScheme.toggleEnabled();
-  console.log("Button click triggers new schema status: ", RangeScheme.isEnabled());
-}
-$toggleButton.on('click', toggleSchemaStatus);
+$toggleButton.on('click', function () { RangeScheme.toggleEnabled(); });
+RangeScheme.setEnabledChangeCallback(
+  function (newEnabledValue) {
+    console.log("The new scheme enabled value: ", newEnabledValue);
+    LED1.write(newEnabledValue ? 1 : 0);
+  }
+);
 
 // Работа с дальномером
 var $sonicSensor = require('@amperka/ultrasonic')
@@ -60,7 +78,7 @@ var $sonicSensor = require('@amperka/ultrasonic')
     echoPin : PIN_INPUT_ULTRASONIC_ECHO
   });
 
-function main() {
+function getNewDistanceValue(measurePeriodTime) {
   "use strict";
   if (!RangeScheme.isEnabled()) {
     console.log("The scheme is disabled");
@@ -85,8 +103,8 @@ function main() {
         "Wait time, ms:", waitTimeMs.toFixed(3)
       );
 
-      if (waitTimeMs > DISTANCE_MEASURE_INTERVAL_TIME_MS) {
-        console.log("Sonar wait time is greater than interval time", DISTANCE_MEASURE_INTERVAL_TIME_MS);
+      if (waitTimeMs > measurePeriodTime) {
+        console.log("Sonar wait time is greater than measure period time", measurePeriodTime);
       }
     },
     "mm"
@@ -94,5 +112,5 @@ function main() {
 
 }
 
-
-RangeScheme.init(main);
+// Запуск схемы
+RangeScheme.run(getNewDistanceValue);
