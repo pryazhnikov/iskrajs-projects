@@ -4,6 +4,7 @@
 
 // Настройки подключения датчиков
 const PIN_STATUS_BUTTON = P0;
+const PIN_DISTANCE_LIGHT = A0;
 const PIN_INPUT_ULTRASONIC_TRIGGER = P12;
 const PIN_INPUT_ULTRASONIC_ECHO = P13;
 
@@ -62,12 +63,15 @@ let RangeScheme = {
 // Кнопка для глобального включения / выключения
 var $toggleButton = require('@amperka/button')
   .connect(PIN_STATUS_BUTTON);
-
 $toggleButton.on('click', function () { RangeScheme.toggleEnabled(); });
+
+var $distanceLight = require('@amperka/led')
+  .connect(PIN_DISTANCE_LIGHT);
+
 RangeScheme.setEnabledChangeCallback(
   function (newEnabledValue) {
-    console.log("The new scheme enabled value: ", newEnabledValue);
-    LED1.write(newEnabledValue ? 1 : 0);
+    console.log("The New scheme enabled value: ", newEnabledValue);
+    $distanceLight.toggle(newEnabledValue);
   }
 );
 
@@ -77,6 +81,28 @@ var $sonicSensor = require('@amperka/ultrasonic')
     trigPin : PIN_INPUT_ULTRASONIC_TRIGGER,
     echoPin : PIN_INPUT_ULTRASONIC_ECHO
   });
+
+function getNormalizedBrightness(x, minValue, maxValue) {
+  let yMinValue = 1;
+  let yMaxValue = 0.1;
+
+  // f(x) = a / x + b
+  // f(minValue) = yMinValue
+  // f(maxValue) = yMaxValue
+
+  let a = minValue * maxValue * (yMinValue - yMaxValue) / (maxValue - minValue);
+  let b = (yMaxValue * maxValue - yMinValue * minValue) / (maxValue - minValue);
+
+  let result = a / x + b;
+  if (result > yMinValue) {
+    result = yMinValue;
+  }
+  if (result < yMaxValue) {
+    result = yMaxValue;
+  }
+
+  return result;
+}
 
 function getNewDistanceValue(measurePeriodTime) {
   "use strict";
@@ -90,17 +116,23 @@ function getNewDistanceValue(measurePeriodTime) {
     function (err, value) {
       let timeFinish = getTime();
       let sonarValue = null;
+      let brightness = null;
       if (err) {
         console.log("Sensor: cannot get ultrasonic value:", err.msg);
       } else {
         // Расстояние меряем в миллиметрах, дробная часть не нужна
         sonarValue = Math.round(value);
+        if (RangeScheme.isEnabled()) {
+          brightness = getNormalizedBrightness(sonarValue, 100, 5000);
+          $distanceLight.brightness(brightness);
+        }
       }
 
       let waitTimeMs = 1e3 * (timeFinish - timeStart);
       console.log(
         "Sonar value, mm:", sonarValue,
-        "Wait time, ms:", waitTimeMs.toFixed(3)
+        "Wait time, ms:", waitTimeMs.toFixed(3),
+        "Brighness:", brightness
       );
 
       if (waitTimeMs > measurePeriodTime) {
