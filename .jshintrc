@@ -1,0 +1,14 @@
+{
+  "bitwise": false,
+  "freeze": true,
+  "globals": {
+    "exports": true
+  },
+  "maxdepth": 3,
+  "maxparams": 5,
+  "maxstatements": 25,
+  "strict": false,
+  "unused": true,
+  "varstmt": false,
+  "esversion": 6
+}
