@@ -33,7 +33,7 @@ toggleButton.on('release', toggleSchemaStatus);
 function resetSchemaState() {
   console.log("Button hold triggers schema reset");
 
-  ServoWrapper.moveTo(SERVO_ANGLE_VALUE_INIT);
+  ServoScanner.moveTo(SERVO_ANGLE_VALUE_INIT);
   // False т.к. при отпускании кнопки сработает событие release
   isSchemeEnabled = false;
 }
