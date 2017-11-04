@@ -1,5 +1,3 @@
-"use strict";
-
 function ServoScanner(
   $servo,
   initialAngle,
@@ -59,4 +57,4 @@ exports.connect = function (
     maxAngle,
     angleDelta
   );
-}
+};

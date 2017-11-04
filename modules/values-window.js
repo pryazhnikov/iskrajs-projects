@@ -1,5 +1,3 @@
-"use strict";
-
 function IntValuesWindow(windowSize) {
   this._valuesCount = 0;
   this._bufferSize = windowSize;
@@ -51,4 +49,4 @@ IntValuesWindow.prototype.toString = function() {
 // Module export
 exports.createIntValuesWindow = function (size) {
   return new IntValuesWindow(size);
-}
+};
