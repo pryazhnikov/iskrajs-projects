@@ -4,7 +4,7 @@ function IntValuesWindow(windowSize) {
   this._values = new Uint32Array(this._bufferSize);
 }
 
-IntValuesWindow.prototype.addValue = function(value) {
+IntValuesWindow.prototype.addValue = function (value) {
   if (this._valuesCount < this._bufferSize) {
     // Окно еще не заполнено, просто добавляем новое значение
     this._values[this._valuesCount] = value;
@@ -21,29 +21,30 @@ IntValuesWindow.prototype.addValue = function(value) {
   return true;
 };
 
-IntValuesWindow.prototype.reset = function() {
+IntValuesWindow.prototype.reset = function () {
   for (let i = 0; i < this._bufferSize; i++) {
     this._values[i] = 0;
   }
+
   this._valuesCount = 0;
 };
 
-IntValuesWindow.prototype.isFull = function() {
+IntValuesWindow.prototype.isFull = function () {
   return (this._valuesCount >= this._bufferSize);
 };
 
-IntValuesWindow.prototype.getValuesCount = function() {
+IntValuesWindow.prototype.getValuesCount = function () {
   return this._valuesCount;
 };
 
-IntValuesWindow.prototype.getLastValues = function() {
+IntValuesWindow.prototype.getLastValues = function () {
   return this._values;
 };
 
-IntValuesWindow.prototype.toString = function() {
+IntValuesWindow.prototype.toString = function () {
   let stopIndex = Math.min(this._valuesCount, this._bufferSize);
   let digestValues = this._values.slice(0, stopIndex);
-  return digestValues.join(", ");
+  return digestValues.join(', ');
 };
 
 // Module export

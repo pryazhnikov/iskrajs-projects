@@ -13,8 +13,8 @@ const LIGHT_DISABLE_TRESHOLD_LX = 30;
 
 var $sonicSensor = require('@amperka/ultrasonic')
   .connect({
-    trigPin : PIN_INPUT_ULTRASONIC_TRIGGER,
-    echoPin : PIN_INPUT_ULTRASONIC_ECHO
+    trigPin: PIN_INPUT_ULTRASONIC_TRIGGER,
+    echoPin: PIN_INPUT_ULTRASONIC_ECHO,
   });
 
 var $lightSensor = require('@amperka/light-sensor')
@@ -31,11 +31,12 @@ var $light = require('@amperka/led')
 var isSchemeEnabled = true;
 function toggleSchemaStatus() {
   isSchemeEnabled = !isSchemeEnabled;
-  console.log("Button click triggers new schema status: ", isSchemeEnabled);
+  console.log('Button click triggers new schema status: ', isSchemeEnabled);
   if (!isSchemeEnabled) {
     lightDisable();
   }
 }
+
 $toggleButton.on('click', toggleSchemaStatus);
 
 function hasAnomaliesInWindow(window) {
@@ -62,13 +63,12 @@ function hasAnomaliesInWindow(window) {
 }
 
 let lightStatus = {
-  generation : 0,
-  isEnabled : false,
-  enableTime : 0
+  generation: 0,
+  isEnabled: false,
+  enableTime: 0,
 };
 function lightEnable() {
   if (lightStatus.isEnabled) return;
-
 
   lightStatus.generation++;
   lightStatus.isEnabled = true;
@@ -76,7 +76,7 @@ function lightEnable() {
 
   $light.turnOn().brightness(1.0);
   console.log(
-    "Light enabling:", lightStatus.enableTime
+    'Light enabling:', lightStatus.enableTime
   );
 
   let disableGeneration = lightStatus.generation;
@@ -88,12 +88,13 @@ function lightEnable() {
         lightDisable();
       } else {
         console.log(
-          "Light disable ignore!",
-          "Disable generation:", disableGeneration,
-          "Current generation:", lightStatus.generation
+          'Light disable ignore!',
+          'Disable generation:', disableGeneration,
+          'Current generation:', lightStatus.generation
         );
       }
     },
+
     LIGHT_ENABLE_TIME_MS
   );
 }
@@ -104,8 +105,8 @@ function lightDisable() {
   let disableTime = getTime().toFixed(0);
   let workTime = disableTime - lightStatus.enableTime;
   console.log(
-    "Light disabling:", disableTime,
-    "Work time:", workTime
+    'Light disabling:', disableTime,
+    'Work time:', workTime
   );
 
   $light.turnOff();
@@ -116,7 +117,7 @@ var sonarValuesWindow = require('values-window')
   .createIntValuesWindow(3);
 setInterval(
   function () {
-    "use strict";
+    'use strict';
 
     if (!isSchemeEnabled) {
       return;
@@ -129,7 +130,7 @@ setInterval(
         let timeFinish = getTime();
         let sonarValue = null;
         if (err) {
-          console.log("Sensor: cannot get ultrasonic value:", err.msg);
+          console.log('Sensor: cannot get ultrasonic value:', err.msg);
         } else {
           // Расстояние меряем в миллиметрах, дробная часть не нужна
           sonarValue = Math.round(value);
@@ -153,17 +154,19 @@ setInterval(
         let movementStr = hasMovement ? 'Yes' : 'No';
         let sonarValuesStr = sonarValuesWindow
           .getLastValues()
-          .join(", ");
+          .join(', ');
         console.log(
-          "Light value, lx:", lightValue.toFixed(3),
-          "Wait time, ms:", waitTimeMs,
+          'Light value, lx:', lightValue.toFixed(3),
+          'Wait time, ms:', waitTimeMs,
           movementStr,
-          "Sonar value, mm:", sonarValuesStr
+          'Sonar value, mm:', sonarValuesStr
         );
 
       },
-      "mm"
+
+      'mm'
     );
   },
+
   MOTION_CHECK_TIME_MS
 );

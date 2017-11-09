@@ -17,7 +17,7 @@ const PIN_INPUT_LIGHT = A0;
 const PIN_INPUT_ULTRASONIC_TRIGGER = P8;
 const PIN_INPUT_ULTRASONIC_ECHO = P9;
 
-console.log("Scenario run start");
+console.log('Scenario run start');
 
 /* Возможность включить-выключить схему */
 
@@ -28,13 +28,14 @@ var ToggleButton = require('@amperka/button')
 var isSchemeEnabled = true;
 function toggleSchemaStatus() {
   isSchemeEnabled = !isSchemeEnabled;
-  console.log("Button triggers new schema status: ", isSchemeEnabled);
+  console.log('Button triggers new schema status: ', isSchemeEnabled);
   if (!isSchemeEnabled) {
     resetSchemeState();
   } else {
     resetStatusLight();
   }
 }
+
 ToggleButton.on('release', toggleSchemaStatus);
 
 // Показ глобального статуса аналогичного ТВ:
@@ -57,14 +58,14 @@ function toggleStatusLight(forcedValue) {
     LED1.write(intValue);
   }
 }
+
 setInterval(toggleStatusLight, STATUS_SHOW_PERIOD_MS);
 
 // Сброс лампочки (для включения системы)
 function resetStatusLight() {
-  console.log("Status light reset to default state");
+  console.log('Status light reset to default state');
   toggleStatusLight(false);
 }
-
 
 //-- Module begin
 function IntValuesWindow(windowSize) {
@@ -73,7 +74,7 @@ function IntValuesWindow(windowSize) {
   this._values = new Uint32Array(this._bufferSize);
 }
 
-IntValuesWindow.prototype.addValue = function(value) {
+IntValuesWindow.prototype.addValue = function (value) {
   if (this._valuesCount < this._bufferSize) {
     // Окно еще не заполнено, просто добавляем новое значение
     this._values[this._valuesCount] = value;
@@ -90,32 +91,33 @@ IntValuesWindow.prototype.addValue = function(value) {
   return true;
 };
 
-IntValuesWindow.prototype.reset = function() {
+IntValuesWindow.prototype.reset = function () {
   for (let i = 0; i < this._bufferSize; i++) {
     this._values[i] = 0;
   }
+
   this._valuesCount = 0;
 };
 
-IntValuesWindow.prototype.isFull = function() {
+IntValuesWindow.prototype.isFull = function () {
   return (this._valuesCount >= this._bufferSize);
 };
 
-IntValuesWindow.prototype.getValuesCount = function() {
+IntValuesWindow.prototype.getValuesCount = function () {
   return this._valuesCount;
 };
 
-IntValuesWindow.prototype.getLastValues = function() {
+IntValuesWindow.prototype.getLastValues = function () {
   return this._values;
 };
 
-IntValuesWindow.prototype.toString = function() {
+IntValuesWindow.prototype.toString = function () {
   let stopIndex = Math.min(this._valuesCount, this._bufferSize);
   let digestValues = this._values.slice(0, stopIndex);
-  return digestValues.join(", ");
+  return digestValues.join(', ');
 };
-//-- Module end
 
+//-- Module end
 
 //-- Module begin
 function SecurityChecker(LightSensor, SonicSensor, AlarmLight, cb) {
@@ -150,11 +152,12 @@ SecurityChecker.prototype.enableAlarm = function () {
   this._isAlarmEnabled = true;
 
   // Через какое-то время система сама выключается
-  var ctx = this;
+  var _this = this;
   setTimeout(
     function () {
-      ctx.disableAlarm();
+      _this.disableAlarm();
     },
+
     ANOMALY_ALARM_TIME_MS
   );
 };
@@ -162,22 +165,23 @@ SecurityChecker.prototype.enableAlarm = function () {
 SecurityChecker.prototype.updateStatus = function () {
   let timeStart = getTime();
   let lightValue = this._LightSensor.read('lx').toFixed(0);
-  let context = this;
+  let _this = this;
   this._SonicSensor.ping(
     function (err, value) {
       let timeFinish = getTime();
       let sonarValue = null;
       if (err) {
-        console.log("Sensor: cannot get ultrasonic value:", err.msg);
+        console.log('Sensor: cannot get ultrasonic value:', err.msg);
       } else {
         // Расстояние меряем в миллиметрах, дробная часть не нужна
         sonarValue = Math.round(value);
       }
 
       let waitTime = (timeFinish - timeStart);
-      context._onValuesReady(waitTime, lightValue, sonarValue);
+      _this._onValuesReady(waitTime, lightValue, sonarValue);
     },
-    "mm"
+
+    'mm'
   );
 };
 
@@ -193,7 +197,7 @@ SecurityChecker.prototype._onValuesReady = function (
   if (this._lightSensorValues.isFull()) {
     if (this._isAnomalyValues(this._lightSensorValues)) {
       hasAnomaly = true;
-      console.log("Status: light sensor anomaly found!");
+      console.log('Status: light sensor anomaly found!');
     }
   }
 
@@ -204,9 +208,9 @@ SecurityChecker.prototype._onValuesReady = function (
   let waitTimeMs = Math.round(1e3 * waitTime);
   console.log(
     '#', this._lightSensorValues.getValuesCount(),
-    (waitTimeMs + "ms"),
-    "Sonar:", sonarValue,
-    "light(lx):", this._lightSensorValues.toString()
+    (waitTimeMs + 'ms'),
+    'Sonar:', sonarValue,
+    'light(lx):', this._lightSensorValues.toString()
   );
 };
 
@@ -217,8 +221,8 @@ SecurityChecker.prototype._isAnomalyValues = function (valuesWindow) {
 
   return false;
 };
-//-- Module end
 
+//-- Module end
 
 //-- Module begin
 function NaiveAnomalyDetector(sensivityPercent) {
@@ -235,10 +239,10 @@ NaiveAnomalyDetector.prototype.check = function (valuesList) {
 
   let result = (deltaPercent >= this._sensivityPercent);
   console.log(
-    result ? "Fail!" : "OK!",
-    "Value:", lastValue,
-    "Average:", avgValue.toFixed(2),
-    "Delta:", deltaPercent.toFixed(2)
+    result ? 'Fail!' : 'OK!',
+    'Value:', lastValue,
+    'Average:', avgValue.toFixed(2),
+    'Delta:', deltaPercent.toFixed(2)
   );
 
   return result;
@@ -254,6 +258,7 @@ NaiveAnomalyDetector.prototype.getAverage = function (valuesList) {
 
   return sumValues / itemsCount;
 };
+
 //-- Module end
 
 var Light = require('@amperka/led')
@@ -262,8 +267,8 @@ var LightSensor = require('@amperka/light-sensor')
   .connect(PIN_INPUT_LIGHT);
 var SonicSensor = require('@amperka/ultrasonic')
   .connect({
-    trigPin : PIN_INPUT_ULTRASONIC_TRIGGER,
-    echoPin : PIN_INPUT_ULTRASONIC_ECHO
+    trigPin: PIN_INPUT_ULTRASONIC_TRIGGER,
+    echoPin: PIN_INPUT_ULTRASONIC_ECHO,
   });
 
 var detector = new NaiveAnomalyDetector(ANOMALY_SENSIVITY_PERCENT);
@@ -278,9 +283,10 @@ var checker = new SecurityChecker(
 );
 
 function resetSchemeState() {
-  console.log("Schema reset to default state");
+  console.log('Schema reset to default state');
   checker.resetState();
 }
+
 resetSchemeState();
 
 setInterval(
@@ -289,5 +295,6 @@ setInterval(
 
     checker.updateStatus();
   },
+
   REACTION_TIME_MS
 );
