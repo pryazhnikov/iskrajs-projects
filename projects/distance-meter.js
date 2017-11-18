@@ -28,54 +28,55 @@ const DISTANCE_MEASURE_INTERVAL_TIME_MS = 250;
 // "Высокоуровневый" объект для работы со схемой
 const RangeScheme = {
   // Работает ли схема изначально
-  '_isEnabled': false,
+  _isEnabled: false,
 
   // Callback, вызываемый при получении новых измерений
-  '_updateCallback': null,
+  _updateCallback: null,
 
   // Callback, вызываемый при включении/выключении схемы
-  '_enabledChangeCallback': null,
+  _enabledChangeCallback: null,
 
-  // Идентификатор таймера, запускаемого по 
-  '_updateIntervalId': null,
+  // Идентификатор таймера, запускаемого по
+  _updateIntervalId: null,
 
-  'isEnabled': function () {
+  isEnabled: function () {
     return this._isEnabled;
   },
 
-  'setEnabledChangeCallback': function (callback) {
+  setEnabledChangeCallback: function (callback) {
     this._enabledChangeCallback = callback;
   },
 
-  'toggleEnabled': function () {
+  toggleEnabled: function () {
     this._isEnabled = !this._isEnabled;
     this._processCallback();
   },
 
-  'run': function (updateCallback) {
+  run: function (updateCallback) {
     this._updateCallback = updateCallback;
     this._processCallback();
   },
 
-  '_processCallback': function () {
+  _processCallback: function () {
     if (this._enabledChangeCallback) {
       this._enabledChangeCallback(this._isEnabled);
     }
 
     if (this._isEnabled && this._updateCallback) {
       let measurePeriodTime = DISTANCE_MEASURE_INTERVAL_TIME_MS;
-      let context = this;
+      let _this = this;
       this._updateIntervalId = setInterval(
         function () {
-          context._updateCallback(measurePeriodTime);
+          _this._updateCallback(measurePeriodTime);
         },
+
         measurePeriodTime
       );
     } else if (!this._isEnabled && this._updateIntervalId) {
       clearInterval(this._updateIntervalId);
       this._updateIntervalId = null;
     }
-  }
+  },
 };
 
 // Кнопка для глобального включения / выключения
@@ -90,7 +91,7 @@ const $distanceLight = require('@amperka/led')
 // Действия при включении/выключении схемы
 RangeScheme.setEnabledChangeCallback(
   function (newEnabledValue) {
-    console.log("The New scheme enabled value: ", newEnabledValue);
+    console.log('The New scheme enabled value: ', newEnabledValue);
     $distanceLight.toggle(newEnabledValue);
   }
 );
@@ -98,8 +99,8 @@ RangeScheme.setEnabledChangeCallback(
 // Работа с дальномером
 const $sonicSensor = require('@amperka/ultrasonic')
   .connect({
-    trigPin : PIN_INPUT_ULTRASONIC_TRIGGER,
-    echoPin : PIN_INPUT_ULTRASONIC_ECHO
+    trigPin: PIN_INPUT_ULTRASONIC_TRIGGER,
+    echoPin: PIN_INPUT_ULTRASONIC_ECHO,
   });
 
 /**
@@ -128,6 +129,7 @@ function getNormalizedBrightness(x, minValue, maxValue) {
   if (result > yMinValue) {
     result = yMinValue;
   }
+
   if (result < yMaxValue) {
     result = yMaxValue;
   }
@@ -140,9 +142,9 @@ function getNormalizedBrightness(x, minValue, maxValue) {
  * @param {number} measurePeriodTime время между снятием измерений
  */
 function getNewDistanceValue(measurePeriodTime) {
-  "use strict";
+  'use strict';
   if (!RangeScheme.isEnabled()) {
-    console.log("The scheme is disabled");
+    console.log('The scheme is disabled');
     return;
   }
 
@@ -153,7 +155,7 @@ function getNewDistanceValue(measurePeriodTime) {
       let sonarValue = null;
       let brightness = null;
       if (err) {
-        console.log("Sensor: cannot get ultrasonic value:", err.msg);
+        console.log('Sensor: cannot get ultrasonic value:', err.msg);
       } else {
         // Расстояние меряем в миллиметрах, дробная часть не нужна
         sonarValue = Math.round(value);
@@ -166,18 +168,19 @@ function getNewDistanceValue(measurePeriodTime) {
       // Вывод отладочной информации
       let waitTimeMs = 1e3 * (timeFinish - timeStart);
       console.log(
-        "Sonar value, mm:", sonarValue,
-        "Wait time, ms:", waitTimeMs.toFixed(3),
-        "Brighness:", brightness
+        'Sonar value, mm:', sonarValue,
+        'Wait time, ms:', waitTimeMs.toFixed(3),
+        'Brighness:', brightness
       );
 
       // Контроль параметров: если мы слишком часто снимаем показания и они не успевают сниматься,
       // то лушше будет увеличить внемя между снятиями показаний дальномера
       if (waitTimeMs > measurePeriodTime) {
-        console.log("Sonar wait time is greater than measure period time", measurePeriodTime);
+        console.log('Sonar wait time is greater than measure period time', measurePeriodTime);
       }
     },
-    "mm"
+
+    'mm'
   );
 
 }

@@ -15,7 +15,7 @@ function getRandomAngle() {
 
 //--
 
-var $servo = require('@amperka/servo', {freq:25}).connect(PIN_SERVO);
+var $servo = require('@amperka/servo', { freq: 25 }).connect(PIN_SERVO);
 
 // Кнопка для глобального включения / выключения
 var $toggleButton = require('@amperka/button')
@@ -25,16 +25,17 @@ var isSchemeEnabled = false;
 var isReturnMove    = false;
 function toggleSchemaStatus() {
   isSchemeEnabled = !isSchemeEnabled;
-  console.log("Button click triggers new schema status: ", isSchemeEnabled);
+  console.log('Button click triggers new schema status: ', isSchemeEnabled);
 }
+
 $toggleButton.on('click', toggleSchemaStatus);
 
 $toggleButton.on(
   'hold',
   function () {
-    "use strict";
+    'use strict';
 
-    console.log("Schema reset");
+    console.log('Schema reset');
 
     $servo.write(INITIAL_ANGLE);
     isSchemeEnabled = false;
@@ -44,10 +45,9 @@ $toggleButton.on(
 
 //--
 
-
 setInterval(
   function () {
-    "use strict";
+    'use strict';
 
     if (!isSchemeEnabled) return;
 
@@ -65,13 +65,14 @@ setInterval(
       let timePerDegreeMs = totalTimeMs / deltaAngle;
 
       console.log(
-        "Angle delta:", deltaAngle,
-        "Time, ms:", totalTimeMs.toFixed(3),
-        "Time per degree, ms:", timePerDegreeMs.toFixed(3)
+        'Angle delta:', deltaAngle,
+        'Time, ms:', totalTimeMs.toFixed(3),
+        'Time per degree, ms:', timePerDegreeMs.toFixed(3)
       );
     }
 
     isReturnMove = !isReturnMove;
   },
+
   SERVO_MOVE_TIME_MS
 );

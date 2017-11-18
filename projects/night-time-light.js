@@ -22,7 +22,7 @@ const PIN_POTENTIOMETER = A5;
 const REACTION_TIME_MS = 250;
 const STATUS_SHOW_PERIOD_MS = 1000;
 
-console.log("Scenario run start");
+console.log('Scenario run start');
 
 // Кнопка для глобального включения / выключения
 const $button = require('@amperka/button')
@@ -31,13 +31,14 @@ const $button = require('@amperka/button')
 let isSchemeEnabled = true;
 function toggleSchemaStatus() {
   isSchemeEnabled = !isSchemeEnabled;
-  console.log("Button triggers new schema status: ", isSchemeEnabled);
+  console.log('Button triggers new schema status: ', isSchemeEnabled);
   if (!isSchemeEnabled) {
     resetSchemeState();
   } else {
     resetStatusLight();
   }
 }
+
 $button.on('release', toggleSchemaStatus);
 
 // Индикатор работоспособности схемы. Работает аналогично ТВ:
@@ -60,11 +61,12 @@ function toggleStatusLight(forcedValue) {
     LED1.write(intValue);
   }
 }
+
 setInterval(toggleStatusLight, STATUS_SHOW_PERIOD_MS);
 
 // Сброс лампочки (для включения системы)
 function resetStatusLight() {
-  console.log("Status light reset to default state");
+  console.log('Status light reset to default state');
   toggleStatusLight(false);
 }
 
@@ -76,7 +78,7 @@ const $light = require('@amperka/led')
   .connect(PIN_LIGHT);
 
 function resetSchemeState() {
-  console.log("Schema reset to default state");
+  console.log('Schema reset to default state');
   $light.turnOff();
 }
 
@@ -92,11 +94,12 @@ setInterval(
     $light.toggle(shouldBeEnabled);
 
     console.log(
-      "Pot:", potValue.toFixed(3),
-      "light_sensor:", sensorLux.toFixed(3),
-      "pot_fixed:", potValueFixed.toFixed(3),
-      "enable:", shouldBeEnabled
+      'Pot:', potValue.toFixed(3),
+      'light_sensor:', sensorLux.toFixed(3),
+      'pot_fixed:', potValueFixed.toFixed(3),
+      'enable:', shouldBeEnabled
     );
   },
+
   REACTION_TIME_MS
 );

@@ -2,5 +2,7 @@ language: node_js
 node_js:
   - "7"
 before_script:
-  - npm install -g jshint
-script: jshint --verbose projects/ modules/
+  - npm install -g jshint jscs
+script:
+  - jshint --verbose projects/ modules/
+  - jscs projects/ modules/
